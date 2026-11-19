@@ -1,0 +1,127 @@
+/* Tahoe Pinyin — pinyin above Chinese characters. */
+
+/* Tone colours are tints of the muted text colour rather than full-strength
+   system colours, so they sit quietly above the text in light and dark mode.
+   Settings → Tahoe Pinyin can replace any of them. */
+body {
+  --tahoe-pinyin-color: var(--text-muted);
+  --tahoe-pinyin-t1: color-mix(in srgb, var(--color-red) 55%, var(--text-muted));
+  --tahoe-pinyin-t2: color-mix(in srgb, var(--color-orange) 55%, var(--text-muted));
+  --tahoe-pinyin-t3: color-mix(in srgb, var(--color-green) 55%, var(--text-muted));
+  --tahoe-pinyin-t4: color-mix(in srgb, var(--color-blue) 55%, var(--text-muted));
+  --tahoe-pinyin-t5: var(--text-faint);
+}
+
+/* Reading view: real <ruby>, which widens a character when its pinyin is
+   longer than it. */
+ruby.tahoe-pinyin {
+  ruby-position: over;
+}
+
+ruby.tahoe-pinyin > rt {
+  font-size: var(--tahoe-pinyin-size, 0.5em);
+  font-family: var(--font-text);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  /* A little room either side, so neighbouring syllables don't run together. */
+  padding: 0 0.15em;
+  color: var(--tahoe-pinyin-color);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Live Preview: the character stays the editor's own text; its pinyin is a
+   ruby annotation drawn from data-py. */
+.markdown-source-view.is-live-preview .tahoe-pinyin-c {
+  display: ruby;
+  ruby-position: over;
+}
+
+.markdown-source-view.is-live-preview .tahoe-pinyin-c::after {
+  content: attr(data-py);
+  display: ruby-text;
+  font-size: var(--tahoe-pinyin-size, 0.5em);
+  font-family: var(--font-text);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  /* A little room either side, so neighbouring syllables don't run together. */
+  padding: 0 0.15em;
+  color: var(--tahoe-pinyin-color);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+/* Tone colours. */
+.tahoe-pinyin-colors ruby.tahoe-pinyin > rt.tahoe-pinyin-t1,
+.tahoe-pinyin-colors .tahoe-pinyin-c.tahoe-pinyin-t1::after {
+  color: var(--tahoe-pinyin-t1);
+}
+.tahoe-pinyin-colors ruby.tahoe-pinyin > rt.tahoe-pinyin-t2,
+.tahoe-pinyin-colors .tahoe-pinyin-c.tahoe-pinyin-t2::after {
+  color: var(--tahoe-pinyin-t2);
+}
+.tahoe-pinyin-colors ruby.tahoe-pinyin > rt.tahoe-pinyin-t3,
+.tahoe-pinyin-colors .tahoe-pinyin-c.tahoe-pinyin-t3::after {
+  color: var(--tahoe-pinyin-t3);
+}
+.tahoe-pinyin-colors ruby.tahoe-pinyin > rt.tahoe-pinyin-t4,
+.tahoe-pinyin-colors .tahoe-pinyin-c.tahoe-pinyin-t4::after {
+  color: var(--tahoe-pinyin-t4);
+}
+.tahoe-pinyin-colors ruby.tahoe-pinyin > rt.tahoe-pinyin-t5,
+.tahoe-pinyin-colors .tahoe-pinyin-c.tahoe-pinyin-t5::after {
+  color: var(--tahoe-pinyin-t5);
+}
+
+/* Practice mode: the space stays, so nothing moves when the pinyin appears. */
+.tahoe-pinyin-hover ruby.tahoe-pinyin > rt,
+.tahoe-pinyin-hover .tahoe-pinyin-c::after {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+/* Pointing shows it, on devices that can point; touch screens tap instead. */
+@media (hover: hover) {
+  .tahoe-pinyin-hover ruby.tahoe-pinyin:hover > rt,
+  .tahoe-pinyin-hover .tahoe-pinyin-c:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Fix pinyin and the corrections setting. */
+.tahoe-pinyin-fix-word {
+  font-size: 2em;
+  text-align: center;
+  margin: 4px 0 12px;
+}
+
+.tahoe-pinyin-fix-input {
+  min-width: 14em;
+}
+
+.tahoe-pinyin-fix-error,
+.tahoe-pinyin-errors {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+}
+
+.tahoe-pinyin-corrections {
+  flex-wrap: wrap;
+}
+
+.tahoe-pinyin-corrections .setting-item-control,
+.tahoe-pinyin-corrections textarea {
+  width: 100%;
+}
+
+/* Practice mode: a tapped character keeps its pinyin showing. */
+.tahoe-pinyin-hover ruby.tahoe-pinyin.is-shown > rt {
+  opacity: 1;
+}
+
+/* Only for the moment a copy reads the selection's text. */
+.tahoe-pinyin-copying rt.tahoe-pinyin-rt {
+  display: none;
+}

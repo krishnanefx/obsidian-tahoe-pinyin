@@ -1,0 +1,18 @@
+{
+  "name": "obsidian-tahoe-pinyin",
+  "version": "1.0.0",
+  "description": "Pinyin above Chinese characters in Obsidian.",
+  "private": true,
+  "license": "MIT",
+  "author": "Krishnan Adaikkappan",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --watch"
+  },
+  "dependencies": {
+    "pinyin-pro": "3.29.5"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

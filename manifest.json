@@ -1,0 +1,10 @@
+{
+  "id": "tahoe-pinyin",
+  "name": "Tahoe Pinyin",
+  "version": "1.0.0",
+  "minAppVersion": "1.13.0",
+  "description": "Pinyin above Chinese characters in Reading view and Live Preview, with the right reading for each word, tone marks or numbers, tone colors and a practice mode.",
+  "author": "Krishnan Adaikkappan",
+  "authorUrl": "https://github.com/krishnanefx",
+  "isDesktopOnly": false
+}
