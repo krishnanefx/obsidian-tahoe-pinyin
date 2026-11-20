@@ -31,6 +31,8 @@ const DEFAULTS = {
   size: 50, // percent of the text size
   skipJapanese: true,
   corrections: "", // your own readings, one per line: 律师行 lǜ shī háng
+  voice: "", // the system voice for Read aloud; "" picks a Chinese one
+  rate: 1, // Read aloud speed
 };
 
 const refresh = StateEffect.define();
@@ -236,14 +238,73 @@ export default class TahoePinyin extends Plugin {
         return true;
       },
     });
+    this.addCommand({
+      id: "read-aloud",
+      name: "Read aloud",
+      checkCallback: (checking) => {
+        const text = this.textToRead();
+        if (!text) return false;
+        if (!checking) this.speak(text);
+        return true;
+      },
+    });
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const word = fixable(editor.getSelection());
         if (word) menu.addItem((item) => item.setTitle("Fix pinyin…").setIcon("languages").onClick(() => this.openFix(word)));
+        const text = editor.getSelection();
+        if (wanted(text, {})) menu.addItem((item) => item.setTitle("Read aloud").setIcon("volume-2").onClick(() => this.speak(text)));
       })
     );
 
-    this.addSettingTab(new PinyinSettings(this.app, this));
+    this.settingTab = new PinyinSettings(this.app, this);
+    this.addSettingTab(this.settingTab);
+    // The system's voices arrive a moment after startup; list them once they do.
+    const synth = window.speechSynthesis;
+    if (synth) {
+      const listVoices = () => this.settingTab.update();
+      synth.addEventListener("voiceschanged", listVoices);
+      this.register(() => synth.removeEventListener("voiceschanged", listVoices));
+    }
+  }
+
+  // What Read aloud reads: the selection, or else the line (or paragraph) you're on.
+  textToRead() {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) return null;
+    let text = "";
+    if (view.getMode() === "source") {
+      const editor = view.editor;
+      text = editor.getSelection() || editor.getLine(editor.getCursor().line);
+    } else {
+      const doc = view.containerEl.ownerDocument;
+      const sel = doc.getSelection();
+      if (sel && !sel.isCollapsed && view.containerEl.contains(sel.anchorNode)) text = plainSelection(doc, sel);
+    }
+    return wanted(text, {}) ? text.trim() : null;
+  }
+
+  // The system's Chinese voice: offline, on Mac, iPhone and iPad.
+  voices() {
+    const synth = window.speechSynthesis;
+    return synth ? synth.getVoices().filter((v) => /^(zh|cmn|yue)\b/i.test(v.lang)) : [];
+  }
+
+  speak(text) {
+    const synth = window.speechSynthesis;
+    if (!synth || typeof SpeechSynthesisUtterance === "undefined") {
+      new Notice("Reading aloud isn't available on this device.");
+      return;
+    }
+    const voices = this.voices();
+    const voice = voices.find((v) => v.voiceURI === this.settings.voice) || voices.find((v) => /^tingting/i.test(v.name)) || voices.find((v) => /^zh[-_]CN/i.test(v.lang)) || voices[0];
+    if (!voice && synth.getVoices().length) new Notice("No Chinese voice is installed. Add one in your system's spoken content settings, then try again.");
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = voice ? voice.lang : "zh-CN";
+    if (voice) utterance.voice = voice;
+    utterance.rate = this.settings.rate;
+    synth.cancel();
+    synth.speak(utterance);
   }
 
   openFix(word) {
@@ -354,15 +415,21 @@ function copyWithoutPinyin(e, doc) {
   const frag = sel.getRangeAt(0).cloneContents();
   const rts = frag.querySelectorAll("rt.tahoe-pinyin-rt");
   if (!rts.length) return;
-  doc.body.classList.add("tahoe-pinyin-copying");
-  const text = sel.toString();
-  doc.body.classList.remove("tahoe-pinyin-copying");
+  const text = plainSelection(doc, sel);
   rts.forEach((rt) => rt.remove());
   const holder = doc.createElement("div");
   holder.appendChild(frag);
   e.clipboardData.setData("text/plain", text);
   e.clipboardData.setData("text/html", holder.innerHTML);
   e.preventDefault();
+}
+
+// The selection's text as the page shows it, without the pinyin.
+function plainSelection(doc, sel) {
+  doc.body.classList.add("tahoe-pinyin-copying");
+  const text = sel.toString();
+  doc.body.classList.remove("tahoe-pinyin-copying");
+  return text;
 }
 
 // The selection, if it's a Chinese word that can take a correction.
@@ -515,6 +582,19 @@ class PinyinSettings extends PluginSettingTab {
           { name: "Practice mode", desc: "Hide the pinyin until you point at a character, or tap it on a touch screen.", control: { type: "toggle", key: "hover" } },
           { name: "Size", desc: "Pinyin size, as a percentage of the text.", control: { type: "slider", key: "size", min: 30, max: 80, step: 5, displayFormat: (v) => `${v}%` } },
           { name: "Skip Japanese", desc: "Leave kanji alone in text that also has kana.", control: { type: "toggle", key: "skipJapanese" } },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Read aloud",
+        items: [
+          {
+            name: "Voice",
+            desc: "Select Chinese and run Read aloud (or right-click). It uses your system's voices, on your device.",
+            aliases: ["speech", "pronunciation", "audio"],
+            control: { type: "dropdown", key: "voice", options: Object.fromEntries([["", "Automatic"], ...this.plugin.voices().map((v) => [v.voiceURI, `${v.name} (${v.lang})`])]) },
+          },
+          { name: "Speed", control: { type: "slider", key: "rate", min: 0.5, max: 1.5, step: 0.1, displayFormat: (v) => `${Math.round(v * 100)}%` } },
         ],
       },
       {

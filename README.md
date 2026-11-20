@@ -11,6 +11,7 @@
 - **Fix a reading:** select a word, right-click and choose **Fix pinyin…** (or run **Fix pinyin for the selected word**). The correction applies wherever that word appears. Every correction is listed in the settings, where you can edit them, with tone marks or numbers (`lv4 shi1 hang2`).
 - **Per note:** add `pinyin: false` to a note's properties to turn it off there, or choose to show pinyin only in notes with `pinyin: true`.
 - **Copying gives plain text.** Copy from Reading view and you get 银行, not 银yín行háng.
+- **Hear it:** select Chinese and run **Read aloud** (or right-click → **Read aloud**) to hear it in your system's Chinese voice. With nothing selected, it reads the line you're on. Pick the voice and speed in the settings.
 
 Code, code blocks and math are left alone, and so is Japanese (text with kana), so kanji don't get pinyin.
 
@@ -55,7 +56,7 @@ Tahoe is a set of plugins and a theme that work on their own and fit together.
 
 ## Disclosures
 
-- **Network use:** none. The dictionary is part of the plugin, and nothing is sent anywhere.
+- **Network use:** none. The dictionary is part of the plugin, Read aloud uses your system's own voices, and nothing is sent anywhere.
 - **Files in your vault:** your settings and corrections are saved in the plugin's folder (`data.json`). **Show or hide pinyin in this note** writes a `pinyin` property to that note; nothing else is written to your notes.
 - **Clipboard:** when you copy text that has pinyin showing, it puts that text on the clipboard without the pinyin, as you'd expect from copying.
 - **No telemetry, ads, accounts or payments.**
