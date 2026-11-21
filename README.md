@@ -8,6 +8,7 @@
 - **Live Preview too.** The line you're typing on stays plain text, so your Chinese input method works as usual. The pinyin comes back when you move to another line.
 - **Tones your way:** marks (zhōng), numbers (zhong1) or none (zhong), and optional tone colors: first tone red, second orange, third green, fourth blue, neutral gray. Pick your own colors if you like.
 - **Practice mode:** the pinyin stays hidden until you point at a character, or tap it on iPhone and iPad.
+- **Characters you know:** select characters and run **I know the selected characters** (or right-click), and their pinyin stops showing, so it appears only where you still need it. Edit the list in the settings.
 - **Fix a reading:** select a word, right-click and choose **Fix pinyin…** (or run **Fix pinyin for the selected word**). The correction applies wherever that word appears. Every correction is listed in the settings, where you can edit them, with tone marks or numbers (`lv4 shi1 hang2`).
 - **Per note:** add `pinyin: false` to a note's properties to turn it off there, or choose to show pinyin only in notes with `pinyin: true`.
 - **Copying gives plain text.** Copy from Reading view and you get 银行, not 银yín行háng.
@@ -56,7 +57,7 @@ Tahoe is a set of plugins and a theme that work on their own and fit together.
 
 ## Disclosures
 
-- **Network use:** none. The dictionary is part of the plugin, Read aloud uses your system's own voices, and nothing is sent anywhere.
+- **Network use:** none from the plugin. The dictionary is part of it. Read aloud hands the text to your system's speech engine; on Mac, iPhone and iPad its voices run on the device.
 - **Files in your vault:** your settings and corrections are saved in the plugin's folder (`data.json`). **Show or hide pinyin in this note** writes a `pinyin` property to that note; nothing else is written to your notes.
 - **Clipboard:** when you copy text that has pinyin showing, it puts that text on the clipboard without the pinyin, as you'd expect from copying.
 - **No telemetry, ads, accounts or payments.**

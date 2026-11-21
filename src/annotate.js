@@ -149,9 +149,11 @@ export function annotate(text, settings = {}, fixes = defaults()) {
     } else i++;
   }
 
+  // Characters you know show no pinyin (their neighbours' readings still use them).
+  const known = settings.knownSet;
   const out = [];
   items.forEach((it, i) => {
-    if (marks[i] !== null) {
+    if (marks[i] !== null && !(known && known.has(it.origin))) {
       const st = styled(marks[i]);
       out.push({ text: it.origin, py: tone === "symbol" ? marks[i] : st[tone], tone: st.tone });
     } else {

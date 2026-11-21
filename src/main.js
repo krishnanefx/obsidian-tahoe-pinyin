@@ -31,6 +31,8 @@ const DEFAULTS = {
   size: 50, // percent of the text size
   skipJapanese: true,
   corrections: "", // your own readings, one per line: 律师行 lǜ shī háng
+  known: "", // characters you know, which get no pinyin
+  hideKnown: true,
   voice: "", // the system voice for Read aloud; "" picks a Chinese one
   rate: 1, // Read aloud speed
 };
@@ -239,6 +241,24 @@ export default class TahoePinyin extends Plugin {
       },
     });
     this.addCommand({
+      id: "know",
+      name: "I know the selected characters",
+      editorCheckCallback: (checking, editor) => {
+        if (!wanted(editor.getSelection(), {})) return false;
+        if (!checking) this.markKnown(editor.getSelection(), true);
+        return true;
+      },
+    });
+    this.addCommand({
+      id: "unknow",
+      name: "Show pinyin for the selected characters again",
+      editorCheckCallback: (checking, editor) => {
+        if (!hanOf(editor.getSelection()).some((c) => this.knownSet().has(c))) return false;
+        if (!checking) this.markKnown(editor.getSelection(), false);
+        return true;
+      },
+    });
+    this.addCommand({
       id: "read-aloud",
       name: "Read aloud",
       checkCallback: (checking) => {
@@ -253,7 +273,11 @@ export default class TahoePinyin extends Plugin {
         const word = fixable(editor.getSelection());
         if (word) menu.addItem((item) => item.setTitle("Fix pinyin…").setIcon("languages").onClick(() => this.openFix(word)));
         const text = editor.getSelection();
-        if (wanted(text, {})) menu.addItem((item) => item.setTitle("Read aloud").setIcon("volume-2").onClick(() => this.speak(text)));
+        if (wanted(text, {})) {
+          menu.addItem((item) => item.setTitle("Read aloud").setIcon("volume-2").onClick(() => this.speak(text)));
+          menu.addItem((item) => item.setTitle("I know these characters").setIcon("check").onClick(() => this.markKnown(text, true)));
+          if (hanOf(text).some((c) => this.knownSet().has(c))) menu.addItem((item) => item.setTitle("Show pinyin for these again").setIcon("undo-2").onClick(() => this.markKnown(text, false)));
+        }
       })
     );
 
@@ -266,6 +290,19 @@ export default class TahoePinyin extends Plugin {
       synth.addEventListener("voiceschanged", listVoices);
       this.register(() => synth.removeEventListener("voiceschanged", listVoices));
     }
+  }
+
+  knownSet() {
+    return new Set(hanOf(this.settings.known));
+  }
+
+  // Add the selection's characters to the ones you know, or take them off.
+  async markKnown(text, know) {
+    const set = this.knownSet();
+    const chars = [...new Set(hanOf(text))];
+    for (const c of chars) know ? set.add(c) : set.delete(c);
+    await this.update({ known: [...set].join("") });
+    new Notice(know ? `No pinyin over ${chars.join("")} now. ${set.size} characters you know.` : `Pinyin is back over ${chars.join("")}.`);
   }
 
   // What Read aloud reads: the selection, or else the line (or paragraph) you're on.
@@ -318,7 +355,8 @@ export default class TahoePinyin extends Plugin {
   // cache starts over whenever one changes.
   rebuild() {
     this.fixes = buildFixes(this.settings.corrections);
-    this.read = cachedAnnotator(this.settings, this.fixes);
+    const knownSet = this.settings.hideKnown ? this.knownSet() : null;
+    this.read = cachedAnnotator(Object.assign({}, this.settings, { knownSet: knownSet && knownSet.size ? knownSet : null }), this.fixes);
   }
 
   watch(doc) {
@@ -374,7 +412,7 @@ export default class TahoePinyin extends Plugin {
 
   async update(patch) {
     Object.assign(this.settings, patch);
-    if (["corrections", "tone", "skipJapanese"].some((k) => k in patch)) this.rebuild();
+    if (["corrections", "tone", "skipJapanese", "known", "hideKnown"].some((k) => k in patch)) this.rebuild();
     await this.saveData(this.settings);
     this.applyLook();
     // Colours, practice mode and size are CSS only: nothing to redraw.
@@ -422,6 +460,11 @@ function copyWithoutPinyin(e, doc) {
   e.clipboardData.setData("text/plain", text);
   e.clipboardData.setData("text/html", holder.innerHTML);
   e.preventDefault();
+}
+
+// The Chinese characters in a piece of text.
+function hanOf(text) {
+  return [...String(text || "")].filter((c) => HAN.test(c));
 }
 
 // The selection's text as the page shows it, without the pinyin.
@@ -521,6 +564,7 @@ class PinyinSettings extends PluginSettingTab {
     this.plugin = plugin;
     // Corrections are saved once you pause typing, not on every key.
     this.saveCorrections = debounce((v) => this.plugin.update({ corrections: v }), 600, true);
+    this.saveKnown = debounce((v) => this.plugin.update({ known: v }), 600, true);
   }
 
   getControlValue(key) {
@@ -541,6 +585,9 @@ class PinyinSettings extends PluginSettingTab {
     } else if (key === "corrections") {
       p.settings.corrections = value;
       this.saveCorrections(value);
+    } else if (key === "known") {
+      p.settings.known = value;
+      this.saveKnown(value);
     } else await p.update({ [key]: value });
     // Tone colour rows show only with tone colours on, and "back to built-in"
     // only once you've picked your own.
@@ -582,6 +629,23 @@ class PinyinSettings extends PluginSettingTab {
           { name: "Practice mode", desc: "Hide the pinyin until you point at a character, or tap it on a touch screen.", control: { type: "toggle", key: "hover" } },
           { name: "Size", desc: "Pinyin size, as a percentage of the text.", control: { type: "slider", key: "size", min: 30, max: 80, step: 5, displayFormat: (v) => `${v}%` } },
           { name: "Skip Japanese", desc: "Leave kanji alone in text that also has kana.", control: { type: "toggle", key: "skipJapanese" } },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Characters you know",
+        items: [
+          {
+            name: "Hide pinyin for characters you know",
+            desc: "So the pinyin shows only where you still need it. Select characters in a note and run I know the selected characters (or right-click) to add them.",
+            aliases: ["known characters", "learned"],
+            control: { type: "toggle", key: "hideKnown" },
+          },
+          {
+            name: "Your characters",
+            desc: "Type or paste them here; anything that isn't a Chinese character is ignored.",
+            control: { type: "textarea", key: "known", placeholder: "我你他的是不了人在有", rows: 3 },
+          },
         ],
       },
       {
