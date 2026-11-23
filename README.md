@@ -7,6 +7,7 @@
 - **The right reading for each word.** Characters with more than one reading get the one their word needs: 银行 yín háng but 行走 xíng zǒu, 重庆 chóng qìng but 重要 zhòng yào.
 - **Live Preview too.** The line you're typing on stays plain text, so your Chinese input method works as usual. The pinyin comes back when you move to another line.
 - **Tones your way:** marks (zhōng), numbers (zhong1) or none (zhong), and optional tone colors: first tone red, second orange, third green, fourth blue, neutral gray. Pick your own colors if you like.
+- **Zhuyin (bopomofo)** instead of pinyin, as used in Taiwan: ㄓㄨㄥ, with zhuyin's tone marks.
 - **Practice mode:** the pinyin stays hidden until you point at a character, or tap it on iPhone and iPad.
 - **Characters you know:** select characters and run **I know the selected characters** (or right-click), and their pinyin stops showing, so it appears only where you still need it. Edit the list in the settings.
 - **Fix a reading:** select a word, right-click and choose **Fix pinyin…** (or run **Fix pinyin for the selected word**). The correction applies wherever that word appears. Every correction is listed in the settings, where you can edit them, with tone marks or numbers (`lv4 shi1 hang2`).

@@ -68,13 +68,51 @@ export function toMarks(syllable) {
   return engine.convert(m[1] + m[2], { format: "numToSymbol" });
 }
 
+/* ---- Zhuyin (bopomofo) ---- */
+
+const ZY_INITIALS = { zh: "ㄓ", ch: "ㄔ", sh: "ㄕ", b: "ㄅ", p: "ㄆ", m: "ㄇ", f: "ㄈ", d: "ㄉ", t: "ㄊ", n: "ㄋ", l: "ㄌ", g: "ㄍ", k: "ㄎ", h: "ㄏ", j: "ㄐ", q: "ㄑ", x: "ㄒ", r: "ㄖ", z: "ㄗ", c: "ㄘ", s: "ㄙ" };
+const ZY_FINALS = {
+  a: "ㄚ", o: "ㄛ", e: "ㄜ", "\u00ea": "ㄝ", ai: "ㄞ", ei: "ㄟ", ao: "ㄠ", ou: "ㄡ", an: "ㄢ", en: "ㄣ", ang: "ㄤ", eng: "ㄥ", er: "ㄦ", ong: "ㄨㄥ",
+  i: "ㄧ", ia: "ㄧㄚ", ie: "ㄧㄝ", io: "ㄧㄛ", iao: "ㄧㄠ", iou: "ㄧㄡ", ian: "ㄧㄢ", in: "ㄧㄣ", iang: "ㄧㄤ", ing: "ㄧㄥ", iong: "ㄩㄥ",
+  u: "ㄨ", ua: "ㄨㄚ", uo: "ㄨㄛ", uai: "ㄨㄞ", uei: "ㄨㄟ", uan: "ㄨㄢ", uen: "ㄨㄣ", uang: "ㄨㄤ", ueng: "ㄨㄥ",
+  "\u00fc": "ㄩ", "\u00fce": "ㄩㄝ", "\u00fcan": "ㄩㄢ", "\u00fcn": "ㄩㄣ",
+};
+const ZY_TONES = { 1: "", 2: "ˊ", 3: "ˇ", 4: "ˋ" };
+const BARE_I = ["zh", "ch", "sh", "r", "z", "c", "s"]; // zhi, ci…: the i is silent
+
+// A syllable with its tone number (zhong1, lü4, de0) → zhuyin (ㄓㄨㄥ, ㄌㄩˋ, ˙ㄉㄜ).
+// Interjections without a vowel (m, ng, hm) come back as they are.
+export function toZhuyin(numbered) {
+  const m = String(numbered).match(/^([a-z\u00fc\u00ea]+)([0-5]?)$/u);
+  if (!m) return numbered;
+  const syl = m[1];
+  const tone = Number(m[2]) || 5;
+  let ini = Object.keys(ZY_INITIALS).find((i) => syl.startsWith(i) && syl.length > i.length) || "";
+  let fin = syl.slice(ini.length);
+  if (!ini && syl.startsWith("y")) {
+    fin = syl.slice(1);
+    fin = fin.startsWith("u") ? "\u00fc" + fin.slice(1) : fin.startsWith("i") ? fin : "i" + fin;
+  } else if (!ini && syl.startsWith("w")) {
+    fin = syl === "wu" ? "u" : "u" + syl.slice(1);
+  } else if (ini) {
+    if ("jqx".includes(ini) && fin.startsWith("u")) fin = "\u00fc" + fin.slice(1);
+    if (fin === "iu") fin = "iou";
+    else if (fin === "ui") fin = "uei";
+    else if (fin === "un") fin = "uen";
+    if (BARE_I.includes(ini) && fin === "i") fin = "";
+  }
+  if (fin && !ZY_FINALS[fin]) return syl;
+  const body = (ZY_INITIALS[ini] || "") + (fin ? ZY_FINALS[fin] : "");
+  return tone === 5 ? "˙" + body : body + ZY_TONES[tone];
+}
+
 // A syllable's tone number and its other spellings, worked out once each.
 const styles = new Map();
 function styled(marked) {
   let st = styles.get(marked);
   if (!st) {
     const num = engine.convert(marked, { format: "symbolToNum" });
-    st = { tone: Number((num.match(/([0-4])$/) || [])[1]) || 5, num: num.replace(/0$/, ""), none: engine.convert(marked, { format: "toneNone" }) };
+    st = { tone: Number((num.match(/([0-4])$/) || [])[1]) || 5, num: num.replace(/0$/, ""), none: engine.convert(marked, { format: "toneNone" }), zhuyin: toZhuyin(num) };
     styles.set(marked, st);
   }
   return st;
@@ -155,7 +193,8 @@ export function annotate(text, settings = {}, fixes = defaults()) {
   items.forEach((it, i) => {
     if (marks[i] !== null && !(known && known.has(it.origin))) {
       const st = styled(marks[i]);
-      out.push({ text: it.origin, py: tone === "symbol" ? marks[i] : st[tone], tone: st.tone });
+      const py = settings.script === "zhuyin" ? st.zhuyin : tone === "symbol" ? marks[i] : st[tone];
+      out.push({ text: it.origin, py, tone: st.tone });
     } else {
       const last = out[out.length - 1];
       if (last && last.py === null) last.text += it.origin;

@@ -24,6 +24,7 @@ const DEFAULTS = {
   where: "all", // "all" notes, or only notes with `pinyin: true`
   reading: true,
   editor: true,
+  script: "pinyin", // or "zhuyin" (bopomofo)
   tone: "symbol", // "symbol" zhōng · "num" zhong1 · "none" zhong
   colors: false, // tone colours
   toneColors: ["", "", "", "", ""], // your own colour for tones 1-4 and neutral; "" keeps the built-in one
@@ -412,7 +413,7 @@ export default class TahoePinyin extends Plugin {
 
   async update(patch) {
     Object.assign(this.settings, patch);
-    if (["corrections", "tone", "skipJapanese", "known", "hideKnown"].some((k) => k in patch)) this.rebuild();
+    if (["corrections", "script", "tone", "skipJapanese", "known", "hideKnown"].some((k) => k in patch)) this.rebuild();
     await this.saveData(this.settings);
     this.applyLook();
     // Colours, practice mode and size are CSS only: nothing to redraw.
@@ -589,6 +590,7 @@ class PinyinSettings extends PluginSettingTab {
       p.settings.known = value;
       this.saveKnown(value);
     } else await p.update({ [key]: value });
+    if (key === "script") this.refreshDomState();
     // Tone colour rows show only with tone colours on, and "back to built-in"
     // only once you've picked your own.
     if (key === "colors" || tone) this.refreshDomState();
@@ -615,7 +617,13 @@ class PinyinSettings extends PluginSettingTab {
         type: "group",
         heading: "Look",
         items: [
-          { name: "Tones", control: { type: "dropdown", key: "tone", options: { symbol: "Marks (zhōng)", num: "Numbers (zhong1)", none: "None (zhong)" } } },
+          {
+            name: "Show",
+            desc: "Pinyin, or zhuyin (bopomofo), as used in Taiwan.",
+            aliases: ["bopomofo", "zhuyin", "注音"],
+            control: { type: "dropdown", key: "script", options: { pinyin: "Pinyin (zhōng)", zhuyin: "Zhuyin (ㄓㄨㄥ)" } },
+          },
+          { name: "Tones", visible: () => s().script !== "zhuyin", control: { type: "dropdown", key: "tone", options: { symbol: "Marks (zhōng)", num: "Numbers (zhong1)", none: "None (zhong)" } } },
           { name: "Tone colors", desc: "Soft tints: first tone red, second orange, third green, fourth blue, neutral gray.", aliases: ["colours"], control: { type: "toggle", key: "colors" } },
           ...TONES.map((name, i) => ({ name, visible: () => s().colors, control: { type: "color", key: `tone${i + 1}` } })),
           {
