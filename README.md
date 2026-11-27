@@ -11,6 +11,7 @@
 - **Practice mode:** the pinyin stays hidden until you point at a character, or tap it on iPhone and iPad.
 - **Characters you know:** select characters and run **I know the selected characters** (or right-click), and their pinyin stops showing, so it appears only where you still need it. Edit the list in the settings.
 - **Fix a reading:** select a word, right-click and choose **Fix pinyin…** (or run **Fix pinyin for the selected word**). The correction applies wherever that word appears. Every correction is listed in the settings, where you can edit them, with tone marks or numbers (`lv4 shi1 hang2`).
+- **Readings in the note itself:** write `{律师行|lǜ shī háng}` to give a word its reading right there, or `{文字|-}` for no pinyin over that text. The braces hide, except on the line you're editing.
 - **Per note:** add `pinyin: false` to a note's properties to turn it off there, or choose to show pinyin only in notes with `pinyin: true`.
 - **Copying gives plain text.** Copy from Reading view and you get 银行, not 银yín行háng.
 - **Hear it:** select Chinese and run **Read aloud** (or right-click → **Read aloud**) to hear it in your system's Chinese voice. With nothing selected, it reads the line you're on. Pick the voice and speed in the settings.

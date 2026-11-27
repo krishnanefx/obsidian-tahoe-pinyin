@@ -17,7 +17,7 @@ import { MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, debounc
 import { ViewPlugin, Decoration } from "@codemirror/view";
 import { RangeSetBuilder, StateEffect } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { HAN, buildFixes, cachedAnnotator, loadEngine, parseCorrections, readingOf, toMarks, wanted } from "./annotate.js";
+import { HAN, buildFixes, cachedAnnotator, findManual, loadEngine, parseCorrections, readingOf, toMarks, wanted, withManual } from "./annotate.js";
 
 const DEFAULTS = {
   enabled: true,
@@ -25,6 +25,7 @@ const DEFAULTS = {
   reading: true,
   editor: true,
   script: "pinyin", // or "zhuyin" (bopomofo)
+  manual: true, // {律师行|lǜ shī háng} in a note gives that reading
   tone: "symbol", // "symbol" zhōng · "num" zhong1 · "none" zhong
   colors: false, // tone colours
   toneColors: ["", "", "", "", ""], // your own colour for tones 1-4 and neutral; "" keeps the built-in one
@@ -57,7 +58,7 @@ export function rubify(root, settings, read) {
   for (const node of nodes) {
     const doc = node.ownerDocument;
     const frag = doc.createDocumentFragment();
-    for (const piece of read(node.data)) {
+    for (const piece of settings.manual ? withManual(node.data, settings, read) : read(node.data)) {
       if (piece.py === null) {
         frag.appendChild(doc.createTextNode(piece.text));
         continue;
@@ -91,6 +92,7 @@ function editorDecorations(view, plugin) {
     for (const r of view.state.selection.ranges) for (let l = doc.lineAt(r.from).number; l <= doc.lineAt(r.to).number; l++) editing.add(l);
 
   const builder = new RangeSetBuilder();
+  const hide = Decoration.replace({});
   const tree = syntaxTree(view.state);
   let lastLine = 0;
   for (const { from, to } of view.visibleRanges) {
@@ -110,6 +112,21 @@ function editorDecorations(view, plugin) {
         },
       });
       const marks = [];
+      // Readings written in the note: the braces and reading hide, the word shows them.
+      if (s.manual && line.text.includes("{"))
+        for (const f of findManual(line.text, s)) {
+          const from = line.from + f.from;
+          const to = line.from + f.to;
+          if (skip.some(([a, b]) => from < b && to > a)) continue;
+          skip.push([from, to]);
+          marks.push(hide.range(from, line.from + f.wordFrom), hide.range(line.from + f.wordTo, to));
+          let off = line.from + f.wordFrom;
+          for (const piece of f.pieces) {
+            const end = off + piece.text.length;
+            if (piece.py !== null) marks.push(Decoration.mark({ class: `tahoe-pinyin-c tahoe-pinyin-t${piece.tone}`, attributes: { "data-py": piece.py } }).range(off, end));
+            off = end;
+          }
+        }
       let at = line.from;
       const take = (a, b) => {
         if (b <= a) return;
@@ -128,6 +145,7 @@ function editorDecorations(view, plugin) {
       take(at, line.to);
       if (!marks.length) continue;
       builder.add(line.from, line.from, Decoration.line({ class: "tahoe-pinyin-line" }));
+      marks.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide);
       for (const m of marks) builder.add(m.from, m.to, m.value);
     }
   }
@@ -413,7 +431,7 @@ export default class TahoePinyin extends Plugin {
 
   async update(patch) {
     Object.assign(this.settings, patch);
-    if (["corrections", "script", "tone", "skipJapanese", "known", "hideKnown"].some((k) => k in patch)) this.rebuild();
+    if (["corrections", "script", "tone", "skipJapanese", "known", "hideKnown", "manual"].some((k) => k in patch)) this.rebuild();
     await this.saveData(this.settings);
     this.applyLook();
     // Colours, practice mode and size are CSS only: nothing to redraw.
@@ -637,6 +655,12 @@ class PinyinSettings extends PluginSettingTab {
           { name: "Practice mode", desc: "Hide the pinyin until you point at a character, or tap it on a touch screen.", control: { type: "toggle", key: "hover" } },
           { name: "Size", desc: "Pinyin size, as a percentage of the text.", control: { type: "slider", key: "size", min: 30, max: 80, step: 5, displayFormat: (v) => `${v}%` } },
           { name: "Skip Japanese", desc: "Leave kanji alone in text that also has kana.", control: { type: "toggle", key: "skipJapanese" } },
+          {
+            name: "Readings in your notes",
+            desc: "Write {律师行|lǜ shī háng} to give a word its reading right there, or {文字|-} for no pinyin. The braces hide, except on the line you're editing.",
+            aliases: ["ruby", "manual", "syntax"],
+            control: { type: "toggle", key: "manual" },
+          },
         ],
       },
       {

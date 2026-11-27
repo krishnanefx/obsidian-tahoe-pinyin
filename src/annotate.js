@@ -204,6 +204,55 @@ export function annotate(text, settings = {}, fixes = defaults()) {
   return out;
 }
 
+/* ---- Readings written in a note: {律师行|lǜ shī háng}, or {文字|-} for none ---- */
+
+const MANUAL = /\{([^{}|\n]+)\|([^{}\n]*)\}/gu;
+
+function shown(text, marked, settings) {
+  if (!engine) return { text, py: marked, tone: 5 };
+  const st = styled(marked);
+  const tone = settings.tone === "num" || settings.tone === "none" ? settings.tone : "symbol";
+  return { text, py: settings.script === "zhuyin" ? st.zhuyin : tone === "symbol" ? marked : st[tone], tone: st.tone };
+}
+
+// Each {word|reading} in a line: where it is, where its word is, and the pieces it
+// shows. One syllable per character gives each its own; any other reading is
+// shown as written over the whole word; "-" shows none.
+export function findManual(text, settings = {}) {
+  const out = [];
+  for (const m of String(text).matchAll(MANUAL)) {
+    const word = m[1];
+    const chars = [...word];
+    if (!chars.every((c) => HAN.test(c))) continue;
+    const raw = m[2].trim();
+    const syllables = raw.split(/[\s'’]+/).filter(Boolean);
+    if (!syllables.length) continue;
+    let pieces;
+    if (raw === "-") pieces = [{ text: word, py: null }];
+    else if (syllables.length === chars.length) pieces = chars.map((c, i) => shown(c, toMarks(syllables[i]), settings));
+    else pieces = [{ text: word, py: raw, tone: 5 }];
+    const from = m.index;
+    out.push({ from, to: from + m[0].length, wordFrom: from + 1, wordTo: from + 1 + word.length, pieces });
+  }
+  return out;
+}
+
+// Text → pieces, with written readings in place of the braces and the rest read
+// as usual by `read`.
+export function withManual(text, settings, read) {
+  const found = findManual(text, settings);
+  if (!found.length) return read(text);
+  const out = [];
+  let at = 0;
+  for (const f of found) {
+    if (f.from > at) out.push(...read(text.slice(at, f.from)));
+    out.push(...f.pieces);
+    at = f.to;
+  }
+  if (at < text.length) out.push(...read(text.slice(at)));
+  return out;
+}
+
 // The reading of a word as one string with tone marks, for the Fix pinyin box.
 export function readingOf(word, fixes = defaults()) {
   return annotate(word, { tone: "symbol" }, fixes)
